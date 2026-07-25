@@ -1,0 +1,36 @@
+{
+    "name": "General Theme",
+    "slug": "general",
+    "version": "1.0.0",
+    "category": "general",
+    "author": "E-Commerce Platform",
+    "description": "A versatile theme suitable for any type of products",
+    "colors": {
+        "primary": "#4f46e5",
+        "secondary": "#7c3aed",
+        "accent": "#10b981",
+        "warning": "#f59e0b",
+        "danger": "#ef4444",
+        "dark": "#1f2937",
+        "light": "#f9fafb"
+    },
+    "fonts": {
+        "heading": "Inter",
+        "body": "Inter"
+    },
+    "features": {
+        "hero_slider": true,
+        "featured_products": true,
+        "category_grid": true,
+        "newsletter": true,
+        "testimonials": true,
+        "flash_sale": true
+    },
+    "layouts": {
+        "home": "home.index",
+        "product": "products.show",
+        "category": "products.category",
+        "cart": "cart.index",
+        "checkout": "checkout.index"
+    }
+}
