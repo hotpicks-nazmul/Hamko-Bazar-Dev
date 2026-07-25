@@ -1,0 +1,381 @@
+@extends('admin.layouts.app')
+
+@section('title', 'Banners')
+
+@section('content')
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Banners</h4>
+    <a href="{{ route('admin.banners.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Add New Banner
+    </a>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stat-card-row mb-4">
+<div class="stat-card stat-card-primary">
+<div class="stat-card-icon"><i class="bi bi-image"></i></div>
+<div class="stat-card-content">
+    <span class="stat-card-label">Total Banners</span>
+    <span class="stat-card-value">{{ $stats['total'] ?? 0 }}</span>
+</div>
+</div>
+<div class="stat-card stat-card-success">
+<div class="stat-card-icon"><i class="bi bi-check-circle"></i></div>
+<div class="stat-card-content">
+    <span class="stat-card-label">Active</span>
+    <span class="stat-card-value">{{ $stats['active'] ?? 0 }}</span>
+</div>
+</div>
+<div class="stat-card stat-card-danger">
+<div class="stat-card-icon"><i class="bi bi-x-circle"></i></div>
+<div class="stat-card-content">
+    <span class="stat-card-label">Inactive</span>
+    <span class="stat-card-value">{{ $stats['inactive'] ?? 0 }}</span>
+</div>
+</div>
+<div class="stat-card stat-card-info">
+<div class="stat-card-icon"><i class="bi bi-list-ol"></i></div>
+<div class="stat-card-content">
+    <span class="stat-card-label">Positions</span>
+    <span class="stat-card-value">{{ count($positions) }}</span>
+</div>
+</div>
+</div>
+
+<!-- Filters Card -->
+<div class="card border-0 shadow-sm mb-3">
+<div class="card-body py-3">
+<form method="GET" id="filterForm">
+    <div class="row g-2 align-items-end">
+        <!-- Search Input -->
+        <div class="col-lg-3 col-md-4 col-sm-6">
+            <label class="form-label small text-muted">Search</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" id="liveSearch" class="form-control"
+                       placeholder="Search by title..." value="{{ request('search') }}">
+                <span class="input-group-text" id="searchSpinner" style="display: none;">
+                    <div class="spinner-border spinner-border-sm"></div>
+                </span>
+            </div>
+        </div>
+        
+        <!-- Position Filter -->
+        <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label small text-muted">Position</label>
+            <select name="position" id="filterPosition" class="form-select form-select-sm">
+                <option value="">All Positions</option>
+                @foreach($positions as $key => $label)
+                    <option value="{{ $key }}" {{ request('position') == $key ? 'selected' : '' }}>
+                        {{ $label }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        
+        <!-- Status Filter -->
+        <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label small text-muted">Status</label>
+            <select name="status" id="filterStatus" class="form-select form-select-sm">
+                <option value="">All Status</option>
+                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+            </select>
+        </div>
+
+        <!-- Per Page -->
+        <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label small text-muted">Per Page</label>
+            <select name="per_page" id="filterPerPage" class="form-select form-select-sm">
+                <option value="15" {{ request('per_page') == 15 ? 'selected' : '' }}>15</option>
+                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
+                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+            </select>
+        </div>
+        
+        <!-- Reset Button -->
+        <div class="col-lg-1 col-md-2 col-sm-6">
+            <a href="{{ route('admin.banners.index') }}" class="btn btn-sm btn-outline-secondary w-100">
+                <i class="bi bi-x-lg me-1"></i> Reset
+            </a>
+        </div>
+    </div>
+</form>
+</div>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="card border-0 shadow-sm mb-3" id="bulkActionsBar" style="display: none;">
+<div class="card-body py-2">
+<div class="d-flex align-items-center justify-content-between">
+    <div>
+        <span class="text-muted"><span id="selectedCount">0</span> selected</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="clearSelection()">
+            Clear Selection
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ route('admin.banners.bulkAction') }}" id="bulkActionForm">
+            @csrf
+            <input type="hidden" name="action" id="bulkActionInput" value="">
+            <input type="hidden" name="ids" id="bulkIdsInput" value="">
+        </form>
+        <button type="button" class="btn btn-sm btn-success" onclick="bulkAction('activate')">
+            <i class="bi bi-check-circle me-1"></i> Activate
+        </button>
+        <button type="button" class="btn btn-sm btn-warning" onclick="bulkAction('deactivate')">
+            <i class="bi bi-x-circle me-1"></i> Deactivate
+        </button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="bulkAction('delete')">
+            <i class="bi bi-trash me-1"></i> Delete
+        </button>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-sm">
+<div class="card-body p-0">
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 40px;">
+                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                </th>
+                <th style="width: 80px;">Image</th>
+                <th>Title</th>
+                <th>Position</th>
+                <th style="width: 100px;">Status</th>
+                <th style="width: 80px;">Order</th>
+                <th style="width: 120px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            @include('admin.banners.partials.table-rows')
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination inside card-body -->
+@if($banners->hasPages())
+<div class="card-footer bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="text-muted small">
+        Showing {{ $banners->firstItem() }} - {{ $banners->lastItem() }} of {{ $banners->total() }} banners
+    </div>
+    <div>
+        {{ $banners->appends(request()->query())->links() }}
+    </div>
+</div>
+@endif
+</div>
+</div>
+
+<!-- Delete Confirmation Form -->
+<form method="POST" id="deleteForm" style="display: none;">
+    @csrf
+    @method('DELETE')
+</form>
+
+@push('styles')
+<style>
+    .banner-thumbnail {
+        width: 60px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    let selectedItems = new Set();
+
+    // Debounced live search
+    let searchTimeout;
+    const searchInput = document.getElementById('liveSearch');
+    const searchSpinner = document.getElementById('searchSpinner');
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const searchTerm = this.value.trim();
+        
+        searchSpinner.style.display = 'block';
+        
+        searchTimeout = setTimeout(() => {
+            performLiveSearch(searchTerm);
+        }, 300);
+    });
+
+    // Filter dropdowns trigger search on change
+    const filterSelects = ['filterPosition', 'filterStatus', 'filterPerPage'];
+    filterSelects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            select.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        }
+    });
+
+    // Live search function
+    function performLiveSearch(searchTerm) {
+        const params = new URLSearchParams();
+        
+        if (searchTerm) params.set('search', searchTerm);
+        
+        const position = document.getElementById('filterPosition').value;
+        if (position) params.set('position', position);
+        
+        const status = document.getElementById('filterStatus').value;
+        if (status) params.set('status', status);
+        
+        const perPage = document.getElementById('filterPerPage').value;
+        if (perPage) params.set('per_page', perPage);
+
+        // Keep existing sort
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('sort')) params.set('sort', urlParams.get('sort'));
+        if (urlParams.get('direction')) params.set('direction', urlParams.get('direction'));
+        
+        fetch(`{{ route('admin.banners.index') }}?${params.toString()}&ajax=1`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            searchSpinner.style.display = 'none';
+            
+            if (data.html) {
+                document.querySelector('#tableBody').innerHTML = data.html;
+                
+                const newUrl = `${window.location.pathname}?${params.toString()}`;
+                window.history.pushState({}, '', newUrl);
+            }
+        })
+        .catch(error => {
+            searchSpinner.style.display = 'none';
+            console.error('Search error:', error);
+            // Fallback to regular form submission
+            document.getElementById('filterForm').submit();
+        });
+    }
+
+    // Select all checkbox
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.banner-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+            if (this.checked) {
+                selectedItems.add(parseInt(checkbox.value));
+            } else {
+                selectedItems.delete(parseInt(checkbox.value));
+            }
+        });
+        updateBulkActions();
+    });
+
+    // Individual checkbox change
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('banner-checkbox')) {
+            const id = parseInt(e.target.value);
+            if (e.target.checked) {
+                selectedItems.add(id);
+            } else {
+                selectedItems.delete(id);
+            }
+            updateBulkActions();
+        }
+    });
+
+    // Update bulk actions bar
+    function updateBulkActions() {
+        const count = selectedItems.size;
+        document.getElementById('selectedCount').textContent = count;
+        document.getElementById('bulkActionsBar').style.display = count > 0 ? 'block' : 'none';
+        
+        // Update select all checkbox state
+        const allCheckboxes = document.querySelectorAll('.banner-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.banner-checkbox:checked');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        
+        if (allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedCheckboxes.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+
+    // Clear selection
+    function clearSelection() {
+        selectedItems.clear();
+        const checkboxes = document.querySelectorAll('.banner-checkbox');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+        updateBulkActions();
+    }
+
+    // Bulk action
+    function bulkAction(action) {
+        if (selectedItems.size === 0) {
+            alert('Please select at least one banner.');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to ${action} ${selectedItems.size} banner(s)?`)) return;
+        
+        document.getElementById('bulkActionInput').value = action;
+        document.getElementById('bulkIdsInput').value = JSON.stringify(Array.from(selectedItems));
+        document.getElementById('bulkActionForm').submit();
+    }
+
+    // Toggle banner status with visual feedback
+    function toggleBannerStatus(checkbox, url) {
+        const isChecked = checkbox.checked;
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Update checkbox state based on server response
+                checkbox.checked = data.is_active;
+                
+                // Show visual feedback
+                const row = checkbox.closest('tr');
+                if (data.is_active) {
+                    row.classList.remove('table-secondary');
+                } else {
+                    row.classList.add('table-secondary');
+                }
+            } else {
+                // Revert checkbox on error
+                checkbox.checked = !isChecked;
+            }
+        })
+        .catch(error => {
+            // Revert checkbox on error
+            checkbox.checked = !isChecked;
+            console.error('Toggle error:', error);
+        });
+    }
+</script>
+@endpush
+@endsection
